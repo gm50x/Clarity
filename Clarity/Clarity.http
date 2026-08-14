@@ -1,0 +1,6 @@
+@Clarity_HostAddress = http://localhost:5069
+
+GET {{Clarity_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
