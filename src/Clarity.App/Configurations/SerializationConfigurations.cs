@@ -11,7 +11,7 @@ public static class SerializationConfigurations
 {
     private static readonly JsonNamingPolicy _jsonNamingPolicy = JsonNamingPolicy.SnakeCaseLower;
     private static readonly JsonStringEnumConverter _jsonStringEnumConverter = new();
-    public static IServiceCollection SetupSerialization(this IServiceCollection services)
+    public static IServiceCollection ConfigureSerialization(this IServiceCollection services)
     {
         services.Configure<MvcJsonOptions>(options =>
         {
@@ -37,10 +37,10 @@ public static class SerializationConfigurations
     private class EndpointNamingTransformer : IOutboundParameterTransformer
     {
         private static readonly JsonNamingPolicy _endpointNamingPolicy = JsonNamingPolicy.KebabCaseLower;
-        public string? TransformOutbound(object? value)
-        {
-            if (value == null) return null;
-            return _endpointNamingPolicy.ConvertName(value.ToString()!);
-        }
+        public string? TransformOutbound(object? value) =>
+            value == null
+                ? null
+                : _endpointNamingPolicy.ConvertName(value.ToString()!);
+
     }
 }
