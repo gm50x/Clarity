@@ -1,4 +1,4 @@
-﻿using Asp.Versioning.ApiExplorer;
+﻿using Asp.Versioning;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.OpenApi;
 using Microsoft.OpenApi;
@@ -7,121 +7,104 @@ using System.Reflection;
 
 namespace Clarity.App.Configurations;
 
-public static class OpenApiConfiguration
+public static class DocumentationConfigurations
 {
-    public static void ConfigureDocumentation(this IServiceCollection services, IConfiguration configuration)
+    public static void ConfigureDocumentation(this IApiVersioningBuilder builder, IConfiguration configuration)
     {
-        using var sp = services.BuildServiceProvider();
-
         var settings = configuration.GetSection("Documentation").Get<DocumentationSettings>()
             ?? throw new InvalidOperationException("Missing required \"Documentation\" settings");
 
-        foreach (var description in GetDescriptions(sp))
+        builder.AddOpenApi(options =>
         {
-            services.AddOpenApi(description.GroupName, options =>
+            options.Document.AddOperationTransformer<QueryParameterTransformer>();
+            options.Document.AddDocumentTransformer((document, context, cancellationToken) =>
             {
-                options.AddOperationTransformer<QueryParameterTransformer>();
-                options.AddDocumentTransformer((document, context, cancellationToken) =>
-                {
-                    document.Info.Title = $"{settings.Title} - {description.GroupName}";
-                    document.Info.Description = settings.Description;
-                    document.Info.Version = description.ApiVersion.ToString();
-                    return Task.CompletedTask;
-                });
+                // options.Description is the ApiVersionDescription for the current version
+                document.Info.Title = $"{settings.Title} - {options.Description.GroupName}";
+                document.Info.Description = settings.Description;
+                document.Info.Version = options.Description.ApiVersion.ToString();
+                return Task.CompletedTask;
             });
-        }
-    }
-
-    public static void UseDocumenation(this WebApplication app)
-    {
-        app.MapOpenApi();
-        app.MapScalarApiReference();
-        app.UseSwaggerUI(options =>
-        {
-            foreach (var description in GetDescriptions(app.Services))
-            {
-                options.SwaggerEndpoint($"/openapi/{description.GroupName}.json", description.GroupName.ToUpperInvariant());
-            }
         });
     }
 
-    private static IEnumerable<ApiVersionDescription> GetDescriptions(IServiceProvider sp)
+    public static void UseDocumentation(this WebApplication app)
     {
-        var descriptionProvider = sp.GetRequiredService<IApiVersionDescriptionProvider>();
-        foreach (var description in descriptionProvider.ApiVersionDescriptions)
-        {
-            yield return description;
-        }
+        app.MapOpenApi().WithDocumentPerVersion();
+        app.MapScalarApiReference();
     }
 
     private class QueryParameterTransformer : IOpenApiOperationTransformer
     {
         public Task TransformAsync(OpenApiOperation operation, OpenApiOperationTransformerContext context, CancellationToken cancellationToken)
         {
-            var parameterDescriptions = context.Description.ParameterDescriptions;
+            var parameters = operation.Parameters;
 
-            foreach (var description in parameterDescriptions)
+            foreach (var description in context.Description.ParameterDescriptions)
             {
-                // 1. Identify complex query bound parameters
-                if (description.Source.Id == "Query" && description.ModelMetadata?.ContainerType is Type modelType)
+                if (description.Source.Id != "Query"
+                    || description.ModelMetadata?.ContainerType is not Type modelType
+                    || description.Name is not string parameterName
+                    || parameters is null)
                 {
-                    string? customName = null;
-
-                    // 2. Strategy A: Check Constructor Parameters (For Records)
-                    var constructor = modelType.GetConstructors().FirstOrDefault();
-                    if (constructor != null)
-                    {
-                        var constructorParam = constructor.GetParameters()
-                            .FirstOrDefault(p => string.Equals(p.Name, description.Name, StringComparison.OrdinalIgnoreCase));
-
-                        var fromQueryAttr = constructorParam?.GetCustomAttribute<FromQueryAttribute>();
-                        if (fromQueryAttr != null && !string.IsNullOrEmpty(fromQueryAttr.Name))
-                        {
-                            customName = fromQueryAttr.Name;
-                        }
-                    }
-
-                    // 3. Strategy B: Check Properties (For Standard Classes, if Record check yielded nothing)
-                    if (customName == null)
-                    {
-                        var property = modelType.GetProperty(description.Name, BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase);
-                        var fromQueryAttr = property?.GetCustomAttribute<FromQueryAttribute>();
-                        if (fromQueryAttr != null && !string.IsNullOrEmpty(fromQueryAttr.Name))
-                        {
-                            customName = fromQueryAttr.Name;
-                        }
-                    }
-
-                    // 4. Swap parameter object if a custom name was mapped
-                    if (customName != null)
-                    {
-                        var openApiParam = operation.Parameters?
-                            .FirstOrDefault(p => p.In == ParameterLocation.Query && string.Equals(p.Name, description.Name, StringComparison.OrdinalIgnoreCase));
-
-                        if (openApiParam != null)
-                        {
-                            var index = operation.Parameters?.IndexOf(openApiParam);
-
-                            if (index == null) continue;
-
-                            var overriddenParam = new OpenApiParameter
-                            {
-                                Name = customName, // <-- Injected name
-                                In = openApiParam.In,
-                                Description = openApiParam.Description,
-                                Required = openApiParam.Required,
-                                Schema = openApiParam.Schema,
-                                Style = openApiParam.Style,
-                                Explode = openApiParam.Explode
-                            };
-
-                            operation.Parameters?[index.Value] = overriddenParam;
-                        }
-                    }
+                    continue;
                 }
+
+                // Apply the [FromQuery(Name = "...")] mapping that the OpenAPI generator does not honor
+                var customName = GetCustomName(modelType, parameterName);
+                if (customName is null)
+                {
+                    continue;
+                }
+
+                var openApiParam = parameters.FirstOrDefault(p =>
+                    p.In == ParameterLocation.Query
+                    && string.Equals(p.Name, parameterName, StringComparison.OrdinalIgnoreCase));
+
+                if (openApiParam is null)
+                {
+                    continue;
+                }
+
+                parameters[parameters.IndexOf(openApiParam)] = new OpenApiParameter
+                {
+                    Name = customName,
+                    In = openApiParam.In,
+                    Description = openApiParam.Description,
+                    Required = openApiParam.Required,
+                    Schema = openApiParam.Schema,
+                    Style = openApiParam.Style,
+                    Explode = openApiParam.Explode
+                };
             }
 
             return Task.CompletedTask;
+        }
+
+        private static string? GetCustomName(Type modelType, string parameterName)
+        {
+            // 1. Check constructor parameters (records)
+            foreach (var constructor in modelType.GetConstructors())
+            {
+                var parameter = constructor.GetParameters()
+                    .FirstOrDefault(p => string.Equals(p.Name, parameterName, StringComparison.OrdinalIgnoreCase));
+
+                var attribute = parameter?.GetCustomAttribute<FromQueryAttribute>();
+                if (attribute is not null && !string.IsNullOrEmpty(attribute.Name))
+                {
+                    return attribute.Name;
+                }
+            }
+
+            // 2. Check properties (classes)
+            var property = modelType.GetProperty(parameterName, BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase);
+            var propertyAttribute = property?.GetCustomAttribute<FromQueryAttribute>();
+            if (propertyAttribute is not null && !string.IsNullOrEmpty(propertyAttribute.Name))
+            {
+                return propertyAttribute.Name;
+            }
+
+            return null;
         }
     }
 }
