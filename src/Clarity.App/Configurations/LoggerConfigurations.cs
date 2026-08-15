@@ -30,9 +30,11 @@ public static class LoggerConfigurations
 
     public static void ConfigureLogger(this WebApplicationBuilder builder)
     {
-        builder.Host.UseSerilog((context, services, config) =>
+        builder.Host.UseSerilog((context, services, configuration) =>
         {
-            config.ReadFrom.Configuration(context.Configuration);
+            configuration
+                .ReadFrom.Services(services)
+                .ReadFrom.Configuration(context.Configuration);
         });
     }
 }
