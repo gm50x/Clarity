@@ -30,7 +30,7 @@ public class HelloWorldController(ILogger<HelloWorldController> _logger) : Contr
         {
             var logScope = new Dictionary<string, string> {
                 { "TargetId", Guid.NewGuid().ToString()},
-                {"TraceKey", $"TraceKey-#{i}"}
+                { "TraceKey", $"TraceKey-#{i}"}
             };
             using (_logger.BeginScope(logScope))
             {

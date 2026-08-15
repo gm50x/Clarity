@@ -8,11 +8,13 @@ public class Program
     public static void Main(string[] args)
     {
         LoggerConfigurations.ConfigureBootstrapLogger();
-        LoggerConfigurations.BootstrapApp(WrappedMain, args);
+        LoggerConfigurations.BootstrapApp(StartApp, args);
     }
-    public static void WrappedMain(string[] args)
+
+    private static void StartApp(string[] args)
     {
         var builder = WebApplication.CreateBuilder(args);
+
         var configuration = builder.Configuration;
 
         builder.ConfigureLogger();
