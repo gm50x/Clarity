@@ -7,29 +7,15 @@ public class Program
 {
     public static void Main(string[] args)
     {
-        try
-        {
-            StartApp(args);
-        }
-        catch (Exception ex)
-        {
-            Log.Fatal(ex, "Application terminated unexpectedly");
-            Environment.ExitCode = 1;
-        }
-        finally
-        {
-            Log.CloseAndFlush();
-        }
+        LoggerConfigurations.ConfigureBootstrapLogger();
+        LoggerConfigurations.BootstrapApp(WrappedMain, args);
     }
-    public static void StartApp(string[] args)
+    public static void WrappedMain(string[] args)
     {
         var builder = WebApplication.CreateBuilder(args);
         var configuration = builder.Configuration;
 
-        builder.Host.UseSerilog((context, services, config) =>
-        {
-            config.ReadFrom.Configuration(configuration);
-        });
+        builder.ConfigureLogger();
 
         // Add services to the container.
 
