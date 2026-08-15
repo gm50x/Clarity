@@ -34,5 +34,7 @@ jobs:
             - Verifique problemas de qualidade de código
             - Verifique problemas de performance
             - Verifique potenciais bugs
-            - Sugira melhorias
+            - Sugira melhorias de performance
+            - Sugira melhorias de refatoração
+            - Sugira outras melhorias que encontrar
             - Comente a PR no modo inline
