@@ -7,7 +7,7 @@ namespace Clarity.App.Controllers.v1;
 [ApiController]
 [ApiVersion("1.0")]
 [Route("api/v{version:apiVersion}/[controller]")]
-public class HelloWorldController : ControllerBase
+public class HelloWorldController(ILogger<HelloWorldController> _logger) : ControllerBase
 {
     [HttpGet]
     public IActionResult GetHello([FromQuery] HelloWorldRequestQuery query)
@@ -21,6 +21,24 @@ public class HelloWorldController : ControllerBase
     {
         var message = body.GreetingType is GreetingType.Informal ? $"Hi, {body.FullName ?? "World"}" : $"Hello, {body.FullName ?? "World"}";
         return Ok(new HelloWorldResponseBody(message, body.GreetingType));
+    }
+
+    [HttpGet("logs")]
+    public IActionResult ProduceLogs([FromQuery(Name = "count")] int count)
+    {
+        for (int i = 0; i < count; i++)
+        {
+            var logScope = new Dictionary<string, string> {
+                { "TargetId", Guid.NewGuid().ToString()},
+                {"TraceKey", $"TraceKey-#{i}"}
+            };
+            using (_logger.BeginScope(logScope))
+            {
+                _logger.LogInformation("Running for {id}", i);
+            }
+        }
+
+        return Ok();
     }
 }
 
