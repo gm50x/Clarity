@@ -4,7 +4,13 @@ on:
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
 
-permissions: write-all
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+concurrency:
+  group: opencode-${{github.workflow}}-${{github.ref}}
+  cancel-in-progress: true
 
 jobs:
   code-review:
@@ -28,3 +34,4 @@ jobs:
             - Verifique problemas de performance
             - Verifique potenciais bugs
             - Sugira melhorias
+            - Adicione os comentários nos arquivos relacionados.
