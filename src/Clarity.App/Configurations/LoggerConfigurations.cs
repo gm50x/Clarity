@@ -17,7 +17,7 @@ public static class LoggerConfigurations
         {
             bootstrapFunc.Invoke(args);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             Log.Fatal(ex, "Application terminated unexpectedly");
             Environment.ExitCode = 1;
