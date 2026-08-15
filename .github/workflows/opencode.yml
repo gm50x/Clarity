@@ -4,14 +4,11 @@ on:
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
 
+permissions: write-all
+
 jobs:
   code-review:
     runs-on: ubuntu-latest
-    permissions:
-      id-token: write
-      contents: read
-      pull-requests: read
-      issues: read
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
