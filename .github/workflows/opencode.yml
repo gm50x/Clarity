@@ -34,4 +34,4 @@ jobs:
             - Verifique problemas de performance
             - Verifique potenciais bugs
             - Sugira melhorias
-            - Adicione os comentários nos arquivos relacionados.
+            - Comente a PR no modo inline
