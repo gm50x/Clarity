@@ -1,5 +1,4 @@
 using Clarity.App.Configurations;
-using Microsoft.AspNetCore.Mvc.ApplicationParts;
 using Serilog;
 
 namespace Clarity.App;
@@ -15,6 +14,7 @@ public class Program
         catch (Exception ex)
         {
             Log.Fatal(ex, "Application terminated unexpectedly");
+            Environment.ExitCode = 1;
         }
         finally
         {
