@@ -1,0 +1,38 @@
+name: opencode
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+concurrency:
+  group: opencode-${{github.workflow}}-${{github.ref}}
+  cancel-in-progress: true
+
+jobs:
+  code-review:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - name: Review code
+        uses: anomalyco/opencode/github@latest
+        env:
+          OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          model: opencode-go/deepseek-v4-pro
+          use_github_token: true
+          prompt: |
+            Revise este pull request como um engenheiro sênior:
+            - Não realize build interno do projeto, é responsabilidade de outro workflow
+            - Verifique problemas de qualidade de código
+            - Verifique problemas de performance
+            - Verifique potenciais bugs
+            - Sugira melhorias
+            - Comente a PR no modo inline

@@ -1,4 +1,3 @@
-
 using Clarity.App.Configurations;
 using Microsoft.AspNetCore.Mvc.ApplicationParts;
 using Serilog;
@@ -35,10 +34,9 @@ public class Program
         // Add services to the container.
 
         builder.Services.AddControllers();
-        // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
         builder.Services.ConfigureSerialization();
-        builder.Services.ConfigureApiVersioning();
-        builder.Services.ConfigureDocumentation(configuration);
+        builder.Services.ConfigureApiVersioning()
+            .ConfigureDocumentation(configuration);
 
         var app = builder.Build();
 
@@ -47,13 +45,11 @@ public class Program
         // Configure the HTTP request pipeline.
         if (app.Environment.IsDevelopment())
         {
-            app.UseDocumenation();
+            app.UseDocumentation();
         }
 
         app.UseHttpsRedirection();
-
         app.UseAuthorization();
-
         app.MapControllers();
 
         app.Run();
