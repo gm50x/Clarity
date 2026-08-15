@@ -12,7 +12,7 @@ public class Program
         builder.Services.AddControllers();
         builder.Services.ConfigureSerialization();
         builder.Services.ConfigureApiVersioning()
-           .ConfigureDocumentation(configuration);
+            .ConfigureDocumentation(configuration);
 
         var app = builder.Build();
 
