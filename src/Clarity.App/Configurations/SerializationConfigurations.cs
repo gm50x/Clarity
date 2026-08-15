@@ -10,7 +10,7 @@ namespace Clarity.App.Configurations;
 public static class SerializationConfigurations
 {
     private static readonly JsonNamingPolicy _jsonNamingPolicy = JsonNamingPolicy.SnakeCaseLower;
-    private static readonly JsonStringEnumConverter _jsonStringEnumConverter = new();
+    private static readonly JsonStringEnumConverter _jsonStringEnumConverter = new(JsonNamingPolicy.SnakeCaseLower);
     public static IServiceCollection ConfigureSerialization(this IServiceCollection services)
     {
         services.Configure<MvcJsonOptions>(options =>
